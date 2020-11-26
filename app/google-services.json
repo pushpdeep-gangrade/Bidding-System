@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "1026396453828",
+    "firebase_url": "https://auction-a09bd.firebaseio.com",
+    "project_id": "auction-a09bd",
+    "storage_bucket": "auction-a09bd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1026396453828:android:3fbf3308b13144a1b4c291",
+        "android_client_info": {
+          "package_name": "com.group1.bidding_system"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1026396453828-98fmbl106gms9918r3dmb5srf1unk8op.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAq1F4afwJ0HJFFmYpNpqm4nzRDkp-EOZQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1026396453828-98fmbl106gms9918r3dmb5srf1unk8op.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
