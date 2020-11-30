@@ -196,7 +196,7 @@ exports.bidOnItem = functions.https.onRequest(async (req, res) => {
     }
 })
 
-// Endpoint for posting a bid on an item
+// Endpoint for cancel a bid on an item
 exports.cancelBid = functions.https.onRequest(async (req, res) => {
     if (typeof req.body.itemId === "undefined" ||  typeof req.body.uid === "undefined") {
         res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
@@ -235,6 +235,43 @@ exports.cancelBid = functions.https.onRequest(async (req, res) => {
                 // Else user does not have $1 to post the item
                 res.json({
                     result: `User does not have winning bid therefore can't cancel bid`
+                });
+            }
+        }
+    }
+})
+
+// Endpoint for posting a bid on an item
+exports.cancelItem = functions.https.onRequest(async (req, res) => {
+    if (typeof req.body.itemId === "undefined" || typeof req.body.uid === "undefined") {
+        res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+    }
+    else {
+        // Read user profile from firestore
+        const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+        const userProfile = readResult.data();
+        if (typeof userProfile === "undefined") {
+            // Else no user found
+            res.json({
+                result: `Unknown user: $${req.body.uid}`
+            });
+        }
+        else {
+            // Confirm user has funds to post item and amount is greater than minimum bid
+            const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
+            if (itemData.data().owner === req.body.uid) {
+
+                const result = await admin.firestore().collection('Items').doc(req.body.itemId).delete();
+                // Send back a message that we've succesfully deleted the item
+                res.json({
+                    result: `Item Deleted`
+                });
+
+            }
+            else {
+                // Else user does not have $1 to post the item
+                res.json({
+                    result: `User does not have permission to delete this item`
                 });
             }
         }
@@ -285,6 +322,21 @@ exports.updateWinningBid = functions.firestore
 
         console.log("new value" + newBidWinner);
 
+
+        return null
+    });
+
+exports.updateOnItemDelete = functions.firestore
+    .document('Items/{itemId}')
+    .onDelete((change, context) => {
+
+        const bidWinner = change.data().winningBid.userId;
+        const amount = parseFloat(change.before.data().winningBid.bidAmount);
+
+        //update balnceOnHold of winneg bider
+        var userDetailsNew = { balanceonhold: admin.firestore.FieldValue.increment(-amount) }
+        const docRef = admin.firestore().collection('Users').doc(bidWinner);
+            const balanceWriteResult = docRef.update(userDetailsNew);
 
         return null
     });
