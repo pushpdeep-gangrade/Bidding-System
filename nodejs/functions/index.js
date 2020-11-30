@@ -241,6 +241,61 @@ exports.cancelBid = functions.https.onRequest(async (req, res) => {
     }
 })
 
+// Endpoint for accept a bid on an item
+exports.acceptBid = functions.https.onRequest(async (req, res) => {
+    if (typeof req.body.itemId === "undefined" || typeof req.body.uid === "undefined") {
+        res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+    }
+    else {
+        // Read user profile from firestore
+        const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+        const userProfile = readResult.data();
+        if (typeof userProfile === "undefined") {
+            // Else no user found
+            res.json({
+                result: `Unknown user: $${req.body.uid}`
+            });
+        }
+        else {
+            // Confirm user has funds to post item and amount is greater than minimum bid
+            const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
+            if (itemData.data().owner === req.body.uid && itemData.data().winningBid.bidAmount >= itemData.data().minfinalbid) {
+
+                const ownerRef = await admin.firestore().collection('Users').doc(req.body.uid);
+                const userId = itemData.data().winningBid.userId;
+
+                var amount = parseFloat(itemData.data().winningBid.bidAmount);
+
+                var userDetails = {
+                    balanceonhold: admin.firestore.FieldValue.increment(-amount),
+                    balance: admin.firestore.FieldValue.increment(-amount)
+                }
+
+                var ownerDetails = {
+                    balance: admin.firestore.FieldValue.increment(amount)
+                }
+
+
+                const ownerDocRef = admin.firestore().collection('Users').doc(req.body.uid);
+                const userDocRef = admin.firestore().collection('Users').doc(userId);
+
+                await ownerDocRef.update(ownerDetails);
+                await userDocRef.update(userDetails);
+
+                // Send back a message that we've succesfully written the message
+                res.json({ result: `Bid accepted` });
+
+            }
+            else {
+                // Else user does not have $1 to post the item
+                res.json({
+                    result: `Owner can't accept bid. Bid amount should be more than finalBidAmount.`
+                });
+            }
+        }
+    }
+})
+
 // Endpoint for posting a bid on an item
 exports.cancelItem = functions.https.onRequest(async (req, res) => {
     if (typeof req.body.itemId === "undefined" || typeof req.body.uid === "undefined") {
