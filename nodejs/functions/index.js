@@ -14,7 +14,7 @@ const INTERNAL_SERVER_ERROR = 500;
 
 // Endpoint for creating a user
 exports.createUser = functions.https.onRequest(async (req, res) => {
-  if (typeof req.body.email === "undefined" || typeof req.body.password === "undefined" ||
+  if (typeof req.body.email === "undefined" || typeof req.body.uid === "undefined" ||
   typeof req.body.firstname === "undefined" || typeof req.body.lastname === "undefined" ||
   typeof req.body.balance === "undefined") {
     res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
@@ -27,10 +27,9 @@ exports.createUser = functions.https.onRequest(async (req, res) => {
       fname: req.body.firstname,
       lname: req.body.lastname,
       email: req.body.email,
-      password: req.body.password
     }
     // Store user into firestore
-    const writeResult = await admin.firestore().collection('Users').add(userDetails);
+    const writeResult = await admin.firestore().collection('Users').doc(req.body.uid).set(userDetails);
     // Send back that user was succesfully written to firestore
     res.json({result:`User with ID: ${writeResult.id} added`, userDetails: userDetails});
   }
@@ -63,7 +62,7 @@ exports.getProfile = functions.https.onRequest(async (req, res) => {
     if (typeof userProfile === "undefined") {
       //Else user not found
       res.json({
-        result: `Unknown user: $${req.body.uid}`
+        result: `Unknown user: $${req.body.uid}`,
       });
     }
     else {
@@ -74,8 +73,8 @@ exports.getProfile = functions.https.onRequest(async (req, res) => {
           "lname": userProfile.lname, 
           "email": userProfile.email ,
           "balance": userProfile.balance,
-          "balanceonhold": userProfile.balanceonhold
-        }
+          "balanceonhold": userProfile.balanceonhold,
+        },
       });
     }
   }
@@ -94,7 +93,7 @@ exports.postItem = functions.https.onRequest(async (req, res) => {
     if (typeof userProfile === "undefined") {
       // Else no user found
       res.json({
-        result: `Unknown user: $${req.body.uid}`
+        result: `Unknown user: $${req.body.uid}`,
       });
     }
     else {
@@ -112,7 +111,7 @@ exports.postItem = functions.https.onRequest(async (req, res) => {
           currentbid: req.body.startbid,
           bidholder: req.body.uid,
           minfinalbid: req.body.minfinalbid,
-          previousbids: []
+          previousbids: [],
         }
         // Store item to firestore
         const writeResult = await admin.firestore().collection('Items').add(itemDetails);
@@ -122,7 +121,7 @@ exports.postItem = functions.https.onRequest(async (req, res) => {
       else {
         // Else user does not have $1 to post the item
         res.json({
-          result: `Insufficient funds: $${userProfile.balance}`
+          result: `Insufficient funds: $${userProfile.balance}`,
         });
       }
     }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@id/viewProfileFragment">
+
+
+    <fragment
+        android:id="@+id/viewProfileFragment"
+        android:name="com.group1.bidding_system.ViewProfileFragment"
+        android:label="@string/profile"
+        tools:layout="@layout/fragment_view_profile" />
+</navigation>
