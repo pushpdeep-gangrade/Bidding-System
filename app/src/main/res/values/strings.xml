@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">Bidding-System</string>
+    <string name="profile">Profile</string>
+    <string name="login_title_text">Login</string>
+    <string name="signup_title_text">Sign Up</string>
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+    <string name="cancel_button_text">Cancel</string>
+    <string name="first_name_hint">First Name</string>
+    <string name="last_name_hint">Last Name</string>
+    <string name="nav_header_title">Advance MAD</string>
+    <string name="nav_header_subtitle">AdvMobileAppDev@gmail.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="logout">Logout</string>
+    <string name="reEnter_password_hint">Re-enter Password</string>
+    <string name="current_balance_label">Balance</string>
+    <string name="add_money_button_text">Add Money</string>
+    <string name="balance_initial">$0.00</string>
 </resources>
