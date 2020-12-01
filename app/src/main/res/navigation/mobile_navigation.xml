@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
-    app:startDestination="@id/viewProfileFragment">
+    app:startDestination="@id/currentBidsFragment">
 
 
     <fragment
@@ -11,4 +11,25 @@
         android:name="com.group1.bidding_system.ViewProfileFragment"
         android:label="@string/profile"
         tools:layout="@layout/fragment_view_profile" />
+
+    <fragment
+        android:id="@+id/currentBidsFragment"
+        android:name="com.group1.bidding_system.currentbids.CurrentBidsFragment"
+        android:label="@string/current_bids_title"
+        tools:layout="@layout/fragment_current_bids" >
+        <action
+            android:id="@+id/action_currentBidsFragment_to_bidItemFragment"
+            app:destination="@id/bidItemFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/postItemFragment"
+        android:name="com.group1.bidding_system.PostItemFragment"
+        android:label="@string/post_item_button_text"
+        tools:layout="@layout/fragment_post_item" />
+    <fragment
+        android:id="@+id/bidItemFragment"
+        android:name="com.group1.bidding_system.BidItemFragment"
+        android:label="@string/post_item_button_text"
+        tools:layout="@layout/fragment_bid_item" />
 </navigation>

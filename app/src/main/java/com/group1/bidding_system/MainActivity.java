@@ -2,6 +2,7 @@ package com.group1.bidding_system;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
@@ -43,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private NavController navController;
     public FirebaseAuth mAuth;
     private TextView userFullName, userEmail;
+    String uid;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         navView.setNavigationItemSelectedListener(this);
 
-        final String uid = getIntent().getStringExtra("userId");
+        uid = getIntent().getStringExtra("userId");
 
         Bundle authBundle = new Bundle();
         authBundle.putString("userId", uid);
@@ -181,11 +183,30 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+
+        Bundle authBundle = new Bundle();
+        authBundle.putString("userId", uid);
+
         if (item.getItemId() == R.id.nav_logout) {
             mAuth.signOut();
 
             finish();
+        }
+        else if(item.getItemId() == R.id.nav_current_bids){
+            navController.navigate(R.id.currentBidsFragment, authBundle);
 
+            drawer.closeDrawer(GravityCompat.START);
+        }
+        else if(item.getItemId() == R.id.nav_post_item){
+            navController.navigate(R.id.postItemFragment, authBundle);
+
+            drawer.closeDrawer(GravityCompat.START);
+        }
+        else if(item.getItemId() == R.id.nav_view_profile){
+            navController.navigate(R.id.viewProfileFragment, authBundle);
+
+            drawer.closeDrawer(GravityCompat.START);
         }
 
         return true;

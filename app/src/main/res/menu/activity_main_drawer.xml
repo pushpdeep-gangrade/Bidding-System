@@ -7,6 +7,12 @@
             android:id="@+id/nav_view_profile"
             android:title="@string/profile" />
         <item
+            android:id="@+id/nav_current_bids"
+            android:title="@string/current_bids_title" />
+        <item
+            android:id="@+id/nav_post_item"
+            android:title="@string/post_item_button_text" />
+        <item
             android:id="@+id/nav_logout"
             android:title="@string/logout" />
     </group>

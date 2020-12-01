@@ -27,6 +27,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -139,7 +142,15 @@ public class ViewProfileFragment extends Fragment {
                                 first.setText(user.firstName);
                                 last.setText(user.lastName);
                                 email.setText(user.email);
-                                balance.setText("$" + String.valueOf(user.balance));
+
+                                Locale locale  = new Locale("en", "UK");
+                                String pattern = "###.00";
+
+                                DecimalFormat decimalFormat = (DecimalFormat)
+                                        NumberFormat.getNumberInstance(locale);
+                                decimalFormat.applyPattern(pattern);
+
+                                balance.setText("$" + decimalFormat.format(user.balance));
 
 
                             } catch (JSONException e) {
@@ -177,8 +188,15 @@ public class ViewProfileFragment extends Fragment {
         AsyncHttpClient client = new AsyncHttpClient();
         RequestParams params = new RequestParams();
 
+        Locale locale  = new Locale("en", "UK");
+        String pattern = "###.##";
+
+        DecimalFormat decimalFormat = (DecimalFormat)
+                NumberFormat.getNumberInstance(locale);
+        decimalFormat.applyPattern(pattern);
+
         params.put("uid", uid);
-        params.put("balance", amount);
+        params.put("balance", decimalFormat.format(Double.parseDouble(amount)));
 
         client.post(addBalanceUrl, params,
                 new AsyncHttpResponseHandler() {

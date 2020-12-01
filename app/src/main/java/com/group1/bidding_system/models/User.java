@@ -13,10 +13,10 @@ public class User implements Serializable {
 
     public User(Map userMap) {
         this.userId = (String) userMap.get("userId");
-        this.firstName = (String) userMap.get("firstName");
-        this.lastName = (String) userMap.get("lastName");
+        this.firstName = (String) userMap.get("fname");
+        this.lastName = (String) userMap.get("lname");
         this.email = (String) userMap.get("email");
-        this.balance = (double) userMap.get("balance");
+        this.balance = Double.parseDouble(String.valueOf(userMap.get("balance")));
     }
 
     public User(String userId, String firstName, String lastName, String emailAddress, double balance) {
