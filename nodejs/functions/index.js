@@ -14,7 +14,7 @@ const INTERNAL_SERVER_ERROR = 500;
 
 // Endpoint for creating a user
 exports.createUser = functions.https.onRequest(async (req, res) => {
-  if (typeof req.body.email === "undefined" || typeof req.body.password === "undefined" ||
+  if (typeof req.body.email === "undefined" || typeof req.body.uid === "undefined" ||
   typeof req.body.firstname === "undefined" || typeof req.body.lastname === "undefined" ||
   typeof req.body.balance === "undefined") {
     res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
@@ -27,10 +27,9 @@ exports.createUser = functions.https.onRequest(async (req, res) => {
       fname: req.body.firstname,
       lname: req.body.lastname,
       email: req.body.email,
-      password: req.body.password
     }
     // Store user into firestore
-    const writeResult = await admin.firestore().collection('Users').add(userDetails);
+    const writeResult = await admin.firestore().collection('Users').doc(req.body.uid).set(userDetails);
     // Send back that user was succesfully written to firestore
     res.json({result:`User with ID: ${writeResult.id} added`, userDetails: userDetails});
   }
@@ -63,7 +62,7 @@ exports.getProfile = functions.https.onRequest(async (req, res) => {
     if (typeof userProfile === "undefined") {
       //Else user not found
       res.json({
-        result: `Unknown user: $${req.body.uid}`
+        result: `Unknown user: $${req.body.uid}`,
       });
     }
     else {
@@ -74,7 +73,7 @@ exports.getProfile = functions.https.onRequest(async (req, res) => {
           "lname": userProfile.lname, 
           "email": userProfile.email ,
           "balance": userProfile.balance,
-          "balanceonhold": userProfile.balanceonhold
+          "balanceonhold": userProfile.balanceonhold,
         }
       });
     }
@@ -94,7 +93,7 @@ exports.postItem = functions.https.onRequest(async (req, res) => {
     if (typeof userProfile === "undefined") {
       // Else no user found
       res.json({
-        result: `Unknown user: $${req.body.uid}`
+        result: `Unknown user: $${req.body.uid}`,
       });
     }
     else {
@@ -109,11 +108,17 @@ exports.postItem = functions.https.onRequest(async (req, res) => {
         var itemDetails = {
           owner: req.body.uid,
           item: req.body.item,
-          currentbid: req.body.startbid,
-          bidholder: req.body.uid,
-          minfinalbid: req.body.minfinalbid,
-          winningBid: {},
-          previousbids: []
+          minfinalbid: parseFloat(req.body.minfinalbid),
+          winningBid: {
+            bidAmount: parseFloat(req.body.startbid),
+            userId: req.body.uid,
+        },
+          previousbids: [
+            {
+              bidAmount: parseFloat(req.body.startbid),
+              userId: req.body.uid,
+            },
+          ],
         }
         // Store item to firestore
         const writeResult = await admin.firestore().collection('Items').add(itemDetails);
@@ -123,7 +128,7 @@ exports.postItem = functions.https.onRequest(async (req, res) => {
       else {
         // Else user does not have $1 to post the item
         res.json({
-          result: `Insufficient funds: $${userProfile.balance}`
+          result: `Insufficient funds: $${userProfile.balance}`,
         });
       }
     }
@@ -149,48 +154,63 @@ exports.bidOnItem = functions.https.onRequest(async (req, res) => {
         else {
             // Confirm user has funds to post item and amount is greater than minimum bid
             const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
-            var amount = parseFloat(req.body.bidAmount) + 1
-          //  console.log(amount + "*****" + itemData.data().currentbid);
-            if (userProfile.balance >= amount && (amount >= parseFloat(itemData.data().currentbid))) {
-                // update new user balance (current - $1)
-                var userDetails = { balance: admin.firestore.FieldValue.increment(-1) }
-
-                // Update user's balance
-                const balanceWriteResult = await admin.firestore().collection('Users').doc(req.body.uid).update(userDetails);
-
-                // Create bid details
-                var bidDetails = {
-                    bidAmount: req.body.bidAmount,
-                    userId: req.body.uid,
-                }
-                // Store item to firestore
-                const itemDoc = await admin.firestore().collection('Items').doc(req.body.itemId);
-                const unionRes = await itemDoc.update({
-                    previousbids: admin.firestore.FieldValue.arrayUnion(bidDetails)
-                });
-
-                var checkforWiningBid = await admin.firestore().collection('Items').doc(req.body.itemId).get();
-                var bidArray = await checkforWiningBid.data().previousbids;
-
-                console.log(bidArray);
-
-                const max = Math.max.apply(Math, bidArray.map(function (o) { return o.bidAmount; }))
-
-                console.log("***" + max)
-            
-                const winBid = bidArray.find(element => element.bidAmount == max);
-                await itemDoc.update({
-                    winningBid: winBid
-                });
-
-                // Send back a message that we've succesfully written the message
-                res.json({ result: `Bid with ID: ${itemDoc.id} added`, bidDetails: bidDetails });
+            if (typeof itemData.data() === "undefined") {
+              //Else user not found
+              res.json({
+                result: `Unknown item: $${req.body.itemId}`,
+              });
             }
             else {
-                // Else user does not have $1 to post the item
-                res.json({
-                    result: `Insufficient funds: $${userProfile.balance}`
+              var amount = parseFloat(req.body.bidAmount) + 1
+            //  console.log(amount + "*****" + itemData.data().currentbid);
+              if (userProfile.balance >= amount && (parseFloat(req.body.bidAmount) >= parseFloat(itemData.data().winningBid.bidAmount))) {
+                  // update new user balance (current - $1)
+                  var userDetails = { balance: admin.firestore.FieldValue.increment(-1) }
+
+                  // Update user's balance
+                  const balanceWriteResult = await admin.firestore().collection('Users').doc(req.body.uid).update(userDetails);
+
+                  // Create bid details
+                  var bidDetails = {
+                      bidAmount: parseFloat(req.body.bidAmount),
+                      userId: req.body.uid,
+                  }
+                  // Store item to firestore
+                  const itemDoc = await admin.firestore().collection('Items').doc(req.body.itemId);
+                  const unionRes = await itemDoc.update({
+                      previousbids: admin.firestore.FieldValue.arrayUnion(bidDetails)
+                  });
+
+                  var checkforWiningBid = await admin.firestore().collection('Items').doc(req.body.itemId).get();
+                  var bidArray = await checkforWiningBid.data().previousbids;
+
+                  console.log(bidArray);
+
+                  const max = Math.max.apply(Math, bidArray.map(function (o) { return o.bidAmount; }))
+
+                  console.log("***" + max)
+              
+                  const winBid = bidArray.find(element => element.bidAmount == max);
+                  await itemDoc.update({
+                      winningBid: winBid
+                  });
+
+                  // Send back a message that we've succesfully written the message
+                  res.json({ result: `Bid with ID: ${itemDoc.id} added`, bidDetails: bidDetails });
+              }
+              else {
+                if (amount < parseFloat(itemData.data().winningBid.bidAmount)) {
+                  res.json({
+                    result: `Invalid bid: $${req.body.bidAmount}. Bid must be greater than or equal to the currentBid`,
                 });
+                }
+                else {
+                  // Else user does not have $ to bid on the item
+                  res.json({
+                      result: `Insufficient funds: $${userProfile.balance}`,
+                  });
+                }
+              }
             }
         }
     }
@@ -208,34 +228,44 @@ exports.cancelBid = functions.https.onRequest(async (req, res) => {
         if (typeof userProfile === "undefined") {
             // Else no user found
             res.json({
-                result: `Unknown user: $${req.body.uid}`
+                result: `Unknown user: $${req.body.uid}`,
             });
         }
         else {
             // Confirm user has funds to post item and amount is greater than minimum bid
             const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
-            if (itemData.data().winningBid.userId === req.body.uid) {
-                const filteredItems = itemData.data().previousbids.filter(item => item.userId !== itemData.data().winningBid.userId)
-                console.log(filteredItems);
-
-                const max = Math.max.apply(Math, filteredItems.map(function (o) { return o.bidAmount; }))
-                const winBid = filteredItems.find(element => element.bidAmount == max);
-
-                const itemDoc = await admin.firestore().collection('Items').doc(req.body.itemId);
-                const unionRes = await itemDoc.update({
-                    winningBid: winBid,
-                    previousbids: filteredItems
-                });
-
-                // Send back a message that we've succesfully written the message
-                res.json({ result: `Bid canceled` });
-
+            if (typeof itemData.data() === "undefined") {
+              //Else user not found
+              res.json({
+                result: `Unknown item: $${req.body.itemId}`,
+              });
             }
             else {
-                // Else user does not have $1 to post the item
-                res.json({
-                    result: `User does not have winning bid therefore can't cancel bid`
-                });
+              if (itemData.data().winningBid.userId === req.body.uid) {
+                  const filteredItems = itemData.data().previousbids.filter(item => item.userId !== itemData.data().winningBid.userId)
+                  console.log(filteredItems);
+
+                  const max = Math.max.apply(Math, filteredItems.map(function (o) { return o.bidAmount; }))
+                  const winBid = filteredItems.find(element => element.bidAmount == max);
+
+                  const itemDoc = await admin.firestore().collection('Items').doc(req.body.itemId);
+                  const unionRes = await itemDoc.update({
+                      winningBid: winBid,
+                      previousbids: filteredItems,
+                  });
+
+                  // Send back a message that we've succesfully written the message
+                  res.json({
+                    result: `Bid canceled`,
+                  });
+
+              }
+              else {
+                  // Else user does not have $1 to post the item
+                  res.json({
+                      result: `User does not have winning bid therefore can't cancel bid`,
+                  });
+              }
             }
         }
     }
@@ -259,38 +289,51 @@ exports.acceptBid = functions.https.onRequest(async (req, res) => {
         else {
             // Confirm user has funds to post item and amount is greater than minimum bid
             const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
-            if (itemData.data().owner === req.body.uid && itemData.data().winningBid.bidAmount >= itemData.data().minfinalbid) {
-
-                const ownerRef = await admin.firestore().collection('Users').doc(req.body.uid);
-                const userId = itemData.data().winningBid.userId;
-
-                var amount = parseFloat(itemData.data().winningBid.bidAmount);
-
-                var userDetails = {
-                    balanceonhold: admin.firestore.FieldValue.increment(-amount),
-                    balance: admin.firestore.FieldValue.increment(-amount)
-                }
-
-                var ownerDetails = {
-                    balance: admin.firestore.FieldValue.increment(amount)
-                }
-
-
-                const ownerDocRef = admin.firestore().collection('Users').doc(req.body.uid);
-                const userDocRef = admin.firestore().collection('Users').doc(userId);
-
-                await ownerDocRef.update(ownerDetails);
-                await userDocRef.update(userDetails);
-
-                // Send back a message that we've succesfully written the message
-                res.json({ result: `Bid accepted` });
-
+            if (typeof itemData.data() === "undefined") {
+              //Else user not found
+              res.json({
+                result: `Unknown item: $${req.body.itemId}`,
+              });
             }
             else {
-                // Else user does not have $1 to post the item
-                res.json({
-                    result: `Owner can't accept bid. Bid amount should be more than finalBidAmount.`
-                });
+              if (itemData.data().owner === req.body.uid && itemData.data().winningBid.bidAmount >= itemData.data().minfinalbid) {
+
+                  const ownerRef = await admin.firestore().collection('Users').doc(req.body.uid);
+                  //const userId = itemData.data().winningBid.userId;
+
+                  var amount = parseFloat(itemData.data().winningBid.bidAmount);
+
+                  //var userDetails = {
+                  //    balanceonhold: admin.firestore.FieldValue.increment(-amount),
+                      //balance: admin.firestore.FieldValue.increment(-amount)
+                  //}
+
+                  var ownerDetails = {
+                      balance: admin.firestore.FieldValue.increment(amount)
+                  }
+
+
+                  const ownerDocRef = admin.firestore().collection('Users').doc(req.body.uid);
+                  //const userDocRef = admin.firestore().collection('Users').doc(userId);
+
+                  await ownerDocRef.update(ownerDetails);
+                  //await userDocRef.update(userDetails);
+
+                  const itemDeleted = await admin.firestore().collection('Items').doc(req.body.itemId).delete();
+
+
+                  // Send back a message that we've succesfully written the message
+                  res.json({
+                    result: `Bid accepted`,
+                  });
+
+              }
+              else {
+                  // Else user does not have $1 to post the item
+                  res.json({
+                      result: `Owner can't accept bid. Bid amount should be more than finalBidAmount.`
+                  });
+              }
             }
         }
     }
@@ -348,30 +391,50 @@ exports.updateWinningBid = functions.firestore
             //send notification to both the user
 
             //decrement balance on hold of previous user and increment the balnceon hold of after user
-            var amount = parseFloat(change.before.data().winningBid.bidAmount);
-            var userDetailsprev = { balanceonhold: admin.firestore.FieldValue.increment(amount) }
-            const docRef = admin.firestore().collection('Users').doc(previousBidWinner);
-            const balanceWriteResult = docRef.update(userDetailsprev);
+            if (change.before.data().winningBid.userId != change.before.data().owner) {
+              var amount = parseFloat(change.before.data().winningBid.bidAmount);
+              var userDetailsprev = {
+                balance: admin.firestore.FieldValue.increment(amount),
+                balanceonhold: admin.firestore.FieldValue.increment(-amount)
+              }
+              const docRef = admin.firestore().collection('Users').doc(previousBidWinner);
+              const balanceWriteResult = docRef.update(userDetailsprev);
+            }
 
-            const docRefNew = admin.firestore().collection('Users').doc(newBidWinner);
-            var amount = parseFloat(change.after.data().winningBid.bidAmount);
-            var userDetailsafter = { balanceonhold: admin.firestore.FieldValue.increment(-amount) }
-            const balanceOnHoldWriteResult = docRefNew.update(userDetailsafter);
+            if (change.after.data().winningBid.userId != change.after.data().owner) {
+              const docRefNew = admin.firestore().collection('Users').doc(newBidWinner);
+              var amount = parseFloat(change.after.data().winningBid.bidAmount);
+              var userDetailsafter = {
+                balance: admin.firestore.FieldValue.increment(-amount),
+                balanceonhold: admin.firestore.FieldValue.increment(amount)
+              }
+              const balanceOnHoldWriteResult = docRefNew.update(userDetailsafter);
+            }
 
         }
         else {
                //send notification to both the user
             //decrement balanceonhold of new user and increment the balnceonhold of previous user
-            var amount = parseFloat(change.after.data().winningBid.bidAmount);
-            var userDetailsNew = { balanceonhold: admin.firestore.FieldValue.increment(amount) }
-            const docRef = admin.firestore().collection('Users').doc(newBidWinner);
-            const balanceWriteResult = docRef.update(userDetailsNew);
+            if (change.after.data().winningBid.userId != change.after.data().owner) {
+              var amount = parseFloat(change.after.data().winningBid.bidAmount);
+              var userDetailsNew = {
+                balance: admin.firestore.FieldValue.increment(-amount),
+                balanceonhold: admin.firestore.FieldValue.increment(amount)
+              }
+              const docRef = admin.firestore().collection('Users').doc(newBidWinner);
+              const balanceWriteResult = docRef.update(userDetailsNew);
+            }
 
             //previous bid winner
-            const docRefNew = admin.firestore().collection('Users').doc(previousBidWinner);
-            var amount = parseFloat(change.before.data().winningBid.bidAmount);
-            var userDetailsBefore = { balanceonhold: admin.firestore.FieldValue.increment(-amount) }
-            const balanceOnHoldWriteResult = docRefNew.update(userDetailsBefore);
+            if (change.before.data().winningBid.userId != change.before.data().owner) {
+              const docRefNew = admin.firestore().collection('Users').doc(previousBidWinner);
+              var amount = parseFloat(change.before.data().winningBid.bidAmount);
+              var userDetailsBefore = {
+                balance: admin.firestore.FieldValue.increment(amount),
+                balanceonhold: admin.firestore.FieldValue.increment(-amount)
+              }
+              const balanceOnHoldWriteResult = docRefNew.update(userDetailsBefore);
+            }
         }
             console.log("previous value" + previousBidWinner);
 
@@ -386,7 +449,7 @@ exports.updateOnItemDelete = functions.firestore
     .onDelete((change, context) => {
 
         const bidWinner = change.data().winningBid.userId;
-        const amount = parseFloat(change.before.data().winningBid.bidAmount);
+        const amount = parseFloat(change.data().winningBid.bidAmount);
 
         //update balnceOnHold of winneg bider
         var userDetailsNew = { balanceonhold: admin.firestore.FieldValue.increment(-amount) }
