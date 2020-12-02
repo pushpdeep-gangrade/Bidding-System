@@ -13,61 +13,80 @@ const NOT_FOUND = 404;
 const INTERNAL_SERVER_ERROR = 500;
 
 // Endpoint for creating a user
-exports.createUser = functions.https.onRequest(async (req, res) => {
-  if (typeof req.body.email === "undefined" || typeof req.body.uid === "undefined" ||
-  typeof req.body.firstname === "undefined" || typeof req.body.lastname === "undefined" ||
-  typeof req.body.balance === "undefined") {
-    res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+exports.createUser = functions.https.onCall(async (data, context) => {
+  if (typeof data.email === "undefined" || typeof context.auth.uid === "undefined" ||
+  typeof data.firstname === "undefined" || typeof data.lastname === "undefined" ||
+  typeof data.balance === "undefined") {
+    return {
+      result:"Bad request Check parameters or Body",
+    };
   }
   else {
     // Create user details (user information and balance)
-    var userDetails = {
-      balance: parseFloat(req.body.balance),
+    const userDetails = {
+      balance: parseFloat(data.balance),
       balanceonhold: 0,
-      fname: req.body.firstname,
-      lname: req.body.lastname,
-      email: req.body.email,
+      fname: data.firstname,
+      lname: data.lastname,
+      email: context.auth.token.email || null,
     }
     // Store user into firestore
-    const writeResult = await admin.firestore().collection('Users').doc(req.body.uid).set(userDetails);
+    const writeResult = await admin.firestore().collection('Users').doc(context.auth.uid).set(userDetails);
+
+    const transactionDetails = {
+      history: [],
+    };
+
+    // Store transaction to firestore
+    const writeResult2 = await admin.firestore().collection('TransactionHistory').doc(context.auth.uid).set(transactionDetails);
     // Send back that user was succesfully written to firestore
-    res.json({result:`User with ID: ${writeResult.id} added`, userDetails: userDetails});
+    return {
+      result:`User with ID: ${writeResult.id} added`,
+      userDetails: userDetails,
+    };
   }
 })
 
 // Endpoint for adding money to user balance
-exports.addBalance = functions.https.onRequest(async (req, res) => {
-  if (typeof req.body.uid === "undefined" || typeof req.body.balance === "undefined") {
-    res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+exports.addBalance = functions.https.onCall(async (data, context) => {
+  if (typeof context.auth.uid === "undefined" || typeof data.balance === "undefined") {
+    return {
+      result:"Bad request Check parameters or Body",
+    };
   }
   else {
     // Create user details (amount added to balance)
-    var userDetails = { balance: admin.firestore.FieldValue.increment(parseFloat(req.body.balance)) }
+    const userDetails = { balance: admin.firestore.FieldValue.increment(parseFloat(data.balance)) }
     // Update user's balance
-    const writeResult = await admin.firestore().collection('Users').doc(req.body.uid).update(userDetails);
+    const writeResult = await admin.firestore().collection('Users').doc(context.auth.uid).update(userDetails);
     // Send back a message that user balance was succesfully updated
-    res.json({result:`User with ID: ${req.body.uid} balance updated`, userDetails: userDetails});
+    return {
+      result:`User with ID: ${context.auth.uid} balance updated`,
+      userDetails: userDetails,
+    };
   }
 })
 
 // Endpoint for getting a user profile
-exports.getProfile = functions.https.onRequest(async (req, res) => {
-  if (typeof req.body.uid === "undefined") {
-    res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+exports.getProfile = functions.https.onCall(async (data, context) => {
+  if (typeof context.auth.uid === "undefined") {
+    return {
+      result:"Bad request Check parameters or Body",
+    };
   }
   else {
     // Get user profile information
-    const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+    const readResult = await admin.firestore().collection('Users').doc(context.auth.uid).get();
     const userProfile = readResult.data();
     if (typeof userProfile === "undefined") {
       //Else user not found
-      res.json({
-        result: `Unknown user: $${req.body.uid}`,
-      });
+      return {
+        result: `Unknown user: $${context.auth.uid}`,
+      };
     }
     else {
       // Send user profile information
-      res.json({
+      return {
         result: {
           "fname": userProfile.fname,
           "lname": userProfile.lname, 
@@ -75,114 +94,121 @@ exports.getProfile = functions.https.onRequest(async (req, res) => {
           "balance": userProfile.balance,
           "balanceonhold": userProfile.balanceonhold,
         },
-      });
+      };
     }
   }
 })
 
 // Endpoint for posting an item
-exports.postItem = functions.https.onRequest(async (req, res) => {
-  if (typeof req.body.uid === "undefined" || typeof req.body.item === "undefined" ||
-  typeof req.body.startbid === "undefined" || typeof req.body.minfinalbid === "undefined") {
-    res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+exports.postItem = functions.https.onCall(async (data, context) => {
+  if (typeof context.auth.uid === "undefined" || typeof data.item === "undefined" ||
+  typeof data.startbid === "undefined" || typeof data.minfinalbid === "undefined") {
+    return {
+      result:"Bad request Check parameters or Body",
+    };
   }
   else {
     // Read user profile from firestore
-    const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+    const readResult = await admin.firestore().collection('Users').doc(context.auth.uid).get();
     const userProfile = readResult.data();
     if (typeof userProfile === "undefined") {
       // Else no user found
       res.json({
-        result: `Unknown user: $${req.body.uid}`,
+        result: `Unknown user: $${context.auth.uid}`,
       });
     }
     else {
       // Confirm user has funds to post item
       if (userProfile.balance >= 1) {
         // Create new user balance (current - $1)
-        var userDetails = { balance: admin.firestore.FieldValue.increment(-1) }
+        const userDetails = { balance: admin.firestore.FieldValue.increment(-1) }
         // Update user's balance
-        const balanceWriteResult = await admin.firestore().collection('Users').doc(req.body.uid).update(userDetails);
-        itemObj = JSON.parse(req.body.item);
+        const balanceWriteResult = await admin.firestore().collection('Users').doc(context.auth.uid).update(userDetails);
+        itemObj = JSON.parse(data.item);
 
         // Create item details
-        var itemDetails = {
-          owner: req.body.uid,
+        const itemDetails = {
+          owner: context.auth.uid,
           item: itemObj,
-          minfinalbid: parseFloat(req.body.minfinalbid),
+          minfinalbid: parseFloat(data.minfinalbid),
           winningBid: {
-            bidAmount: parseFloat(req.body.startbid),
-            userId: req.body.uid,
+            bidAmount: parseFloat(data.startbid),
+            userId: context.auth.uid,
         },
           previousbids: [
             {
-              bidAmount: parseFloat(req.body.startbid),
-              userId: req.body.uid,
+              bidAmount: parseFloat(data.startbid),
+              userId: context.auth.uid,
             },
           ],
         }
         // Store item to firestore
         const writeResult = await admin.firestore().collection('Items').doc(itemObj.id).set(itemDetails);
         // Send back a message that we've succesfully written the message
-        res.json({result:`Item with ID: ${writeResult.id} added`, itemDetails: itemDetails});
+        return {
+          result: `Item with ID: ${writeResult.id} added`,
+          itemDetails: itemDetails,
+        };
       }
       else {
         // Else user does not have $1 to post the item
-        res.json({
+        return {
           result: `Insufficient funds: $${userProfile.balance}`,
-        });
+        };
       }
     }
   }
 })
 
 // Endpoint for posting a bid on an item
-exports.bidOnItem = functions.https.onRequest(async (req, res) => {
-    if (typeof req.body.itemId === "undefined" || typeof req.body.bidAmount === "undefined" ||
-        typeof req.body.uid === "undefined") {
-        res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+exports.bidOnItem = functions.https.onCall(async (data, context) => {
+    if (typeof data.itemId === "undefined" || typeof data.bidAmount === "undefined" ||
+        typeof context.auth.uid === "undefined") {
+        return {
+          result:"Bad request Check parameters or Body",
+        };
     }
     else {
         // Read user profile from firestore
-        const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+        const readResult = await admin.firestore().collection('Users').doc(context.auth.uid).get();
         const userProfile = readResult.data();
         if (typeof userProfile === "undefined") {
             // Else no user found
-            res.json({
-                result: `Unknown user: $${req.body.uid}`,
-            });
+            return {
+                result: `Unknown user: $${context.auth.uid}`,
+            };
         }
         else {
             // Confirm user has funds to post item and amount is greater than minimum bid
-            const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
+            const itemData = await admin.firestore().collection('Items').doc(data.itemId).get();
             if (typeof itemData.data() === "undefined") {
               //Else user not found
-              res.json({
-                result: `Unknown item: $${req.body.itemId}`,
-              });
+              return {
+                result: `Unknown item: $${data.itemId}`,
+              };
             }
             else {
-              var amount = parseFloat(req.body.bidAmount) + 1
+              var amount = parseFloat(data.bidAmount) + 1
             //  console.log(amount + "*****" + itemData.data().currentbid);
-              if (userProfile.balance >= amount && (parseFloat(req.body.bidAmount) >= parseFloat(itemData.data().winningBid.bidAmount))) {
+              if (userProfile.balance >= amount && (parseFloat(data.bidAmount) >= parseFloat(itemData.data().winningBid.bidAmount))) {
                   // update new user balance (current - $1)
-                  var userDetails = { balance: admin.firestore.FieldValue.increment(-1) }
+                  const userDetails = { balance: admin.firestore.FieldValue.increment(-1) }
 
                   // Update user's balance
-                  const balanceWriteResult = await admin.firestore().collection('Users').doc(req.body.uid).update(userDetails);
+                  const balanceWriteResult = await admin.firestore().collection('Users').doc(context.auth.uid).update(userDetails);
 
                   // Create bid details
-                  var bidDetails = {
-                      bidAmount: parseFloat(req.body.bidAmount),
-                      userId: req.body.uid,
+                  const bidDetails = {
+                      bidAmount: parseFloat(data.bidAmount),
+                      userId: context.auth.uid,
                   }
                   // Store item to firestore
-                  const itemDoc = await admin.firestore().collection('Items').doc(req.body.itemId);
+                  const itemDoc = await admin.firestore().collection('Items').doc(data.itemId);
                   const unionRes = await itemDoc.update({
                       previousbids: admin.firestore.FieldValue.arrayUnion(bidDetails),
                   });
 
-                  var checkforWiningBid = await admin.firestore().collection('Items').doc(req.body.itemId).get();
+                  var checkforWiningBid = await admin.firestore().collection('Items').doc(data.itemId).get();
                   var bidArray = await checkforWiningBid.data().previousbids;
 
                   console.log(bidArray);
@@ -197,19 +223,22 @@ exports.bidOnItem = functions.https.onRequest(async (req, res) => {
                   });
 
                   // Send back a message that we've succesfully written the message
-                  res.json({ result: `Bid with ID: ${itemDoc.id} added`, bidDetails: bidDetails });
+                  return {
+                    result: `Bid with ID: ${itemDoc.id} added`,
+                    bidDetails: bidDetails,
+                  };
               }
               else {
                 if (amount < parseFloat(itemData.data().winningBid.bidAmount)) {
-                  res.json({
-                    result: `Invalid bid: $${req.body.bidAmount}. Bid must be greater than or equal to the currentBid`,
-                });
+                  return {
+                    result: `Invalid bid: $${data.bidAmount}. Bid must be greater than or equal to the currentBid`,
+                  };
                 }
                 else {
                   // Else user does not have $ to bid on the item
-                  res.json({
+                  return {
                       result: `Insufficient funds: $${userProfile.balance}`,
-                  });
+                  };
                 }
               }
             }
@@ -218,39 +247,41 @@ exports.bidOnItem = functions.https.onRequest(async (req, res) => {
 })
 
 // Endpoint for cancel a bid on an item
-exports.cancelBid = functions.https.onRequest(async (req, res) => {
-    if (typeof req.body.itemId === "undefined" ||  typeof req.body.uid === "undefined") {
-        res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+exports.cancelBid = functions.https.onCall(async (data, context) => {
+    if (typeof data.itemId === "undefined" ||  typeof context.auth.uid === "undefined") {
+        return {
+          result:"Bad request Check parameters or Body",
+        };
     }
     else {
         // Read user profile from firestore
-        const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+        const readResult = await admin.firestore().collection('Users').doc(context.auth.uid).get();
         const userProfile = readResult.data();
         if (typeof userProfile === "undefined") {
             // Else no user found
-            res.json({
-                result: `Unknown user: $${req.body.uid}`,
-            });
+            return {
+                result: `Unknown user: $${context.auth.uid}`,
+            };
         }
         else {
             // Confirm user has funds to post item and amount is greater than minimum bid
-            const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
+            const itemData = await admin.firestore().collection('Items').doc(data.itemId).get();
             if (typeof itemData.data() === "undefined") {
               //Else user not found
-              res.json({
-                result: `Unknown item: $${req.body.itemId}`,
-              });
+              return {
+                result: `Unknown item: $${data.itemId}`,
+              };
             }
             else {
-              if (itemData.data().winningBid.userId === req.body.uid) {
+              if (itemData.data().winningBid.userId === context.auth.uid) {
 
-                  if(itemData.data().owner === req.body.uid){
-                    const cancelPostedItem = await admin.firestore().collection('Items').doc(req.body.itemId).delete();
+                  if(itemData.data().owner === context.auth.uid){
+                    const cancelPostedItem = await admin.firestore().collection('Items').doc(data.itemId).delete();
   
                     // Send back a message that we've succesfully written the message
-                    res.json({
+                    return {
                       result: `Your posted item has been canceled`,
-                    });
+                    };
                   }
                   else{
                     const filteredItems = itemData.data().previousbids.filter(item => item.userId !== itemData.data().winningBid.userId)
@@ -259,32 +290,32 @@ exports.cancelBid = functions.https.onRequest(async (req, res) => {
                     const max = Math.max.apply(Math, filteredItems.map(function (o) { return o.bidAmount; }))
                     const winBid = filteredItems.find(element => element.bidAmount == max);
   
-                    const itemDoc = await admin.firestore().collection('Items').doc(req.body.itemId);
+                    const itemDoc = await admin.firestore().collection('Items').doc(data.itemId);
                     const unionRes = await itemDoc.update({
                         winningBid: winBid,
                         previousbids: filteredItems,
                     });
 
                     // Send back a message that we've succesfully written the message
-                    res.json({
+                    return {
                       result: `Bid canceled`,
-                    });
+                    };
   
                   }
               }
-              else if(itemData.data().owner === req.body.uid){
-                  const cancelPostedItem = await admin.firestore().collection('Items').doc(req.body.itemId).delete();
+              else if(itemData.data().owner === context.auth.uid){
+                  const cancelPostedItem = await admin.firestore().collection('Items').doc(data.itemId).delete();
 
                   // Send back a message that we've succesfully written the message
-                  res.json({
+                  return {
                     result: `Your posted item has been canceled`,
-                  });
+                  };
               }
               else {
                   // Else user does not have $1 to post the item
-                  res.json({
+                  return {
                       result: `User does not have winning bid therefore can't cancel bid`,
-                  });
+                  };
               }
             }
         }
@@ -292,67 +323,83 @@ exports.cancelBid = functions.https.onRequest(async (req, res) => {
 })
 
 // Endpoint for accept a bid on an item
-exports.acceptBid = functions.https.onRequest(async (req, res) => {
-    if (typeof req.body.itemId === "undefined" || typeof req.body.uid === "undefined") {
-        res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+exports.acceptBid = functions.https.onCall(async (data, context) => {
+    if (typeof data.itemId === "undefined" || typeof context.auth.uid === "undefined") {
+        return {
+          result:"Bad request Check parameters or Body",
+        };
     }
     else {
         // Read user profile from firestore
-        const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+        const readResult = await admin.firestore().collection('Users').doc(context.auth.uid).get();
         const userProfile = readResult.data();
         if (typeof userProfile === "undefined") {
             // Else no user found
-            res.json({
-                result: `Unknown user: $${req.body.uid}`,
-            });
+            return {
+                result: `Unknown user: $${context.auth.uid}`,
+            };
         }
         else {
             // Confirm user has funds to post item and amount is greater than minimum bid
-            const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
+            const itemData = await admin.firestore().collection('Items').doc(data.itemId).get();
             if (typeof itemData.data() === "undefined") {
               //Else user not found
-              res.json({
-                result: `Unknown item: $${req.body.itemId}`,
-              });
+              return {
+                result: `Unknown item: $${data.itemId}`,
+              };
             }
             else {
-              if (itemData.data().owner === req.body.uid && itemData.data().winningBid.bidAmount >= itemData.data().minfinalbid) {
+              if (itemData.data().owner === context.auth.uid && itemData.data().winningBid.bidAmount >= itemData.data().minfinalbid) {
 
-                  const ownerRef = await admin.firestore().collection('Users').doc(req.body.uid);
+                  const ownerRef = await admin.firestore().collection('Users').doc(context.auth.uid);
                   //const userId = itemData.data().winningBid.userId;
+                  const winnerId = itemData.data().winningBid.userId;
+                  const itemName = itemData.data().item.name;
 
-                  var amount = parseFloat(itemData.data().winningBid.bidAmount);
+                  const amount = parseFloat(itemData.data().winningBid.bidAmount);
 
                   //var userDetails = {
                   //    balanceonhold: admin.firestore.FieldValue.increment(-amount),
                       //balance: admin.firestore.FieldValue.increment(-amount)
                   //}
 
-                  var ownerDetails = {
+                  const ownerDetails = {
                       balance: admin.firestore.FieldValue.increment(amount),
                   }
 
 
-                  const ownerDocRef = admin.firestore().collection('Users').doc(req.body.uid);
+                  const ownerDocRef = admin.firestore().collection('Users').doc(context.auth.uid);
                   //const userDocRef = admin.firestore().collection('Users').doc(userId);
 
                   await ownerDocRef.update(ownerDetails);
                   //await userDocRef.update(userDetails);
 
-                  const itemDeleted = await admin.firestore().collection('Items').doc(req.body.itemId).delete();
+                  const itemDeleted = await admin.firestore().collection('Items').doc(data.itemId).delete();
 
+                  let date_ob = new Date();
+                  const transactionDetails = {
+                      history: admin.firestore.FieldValue.arrayUnion({
+                        sellerId: context.auth.uid,
+                        item: itemName,
+                        price: amount,
+                        date: date_ob.getDate(),
+                      }),
+                  }
+
+                  // Store transaction to firestore
+                  const writeResult = await admin.firestore().collection('TransactionHistory').doc(winnerId).update(transactionDetails);
 
                   // Send back a message that we've succesfully written the message
-                  res.json({
+                  return {
                     result: `Bid accepted`,
-                  });
+                  };
 
               }
               else {
                   // Else user does not have $1 to post the item
-                  res.json({
+                  return {
                       result: `Owner can't accept bid. Bid amount should be more than finalBidAmount.`,
-                  });
+                  };
               }
             }
         }
@@ -360,40 +407,67 @@ exports.acceptBid = functions.https.onRequest(async (req, res) => {
 })
 
 // Endpoint for posting a bid on an item
-exports.cancelItem = functions.https.onRequest(async (req, res) => {
-    if (typeof req.body.itemId === "undefined" || typeof req.body.uid === "undefined") {
+exports.cancelItem = functions.https.onCall(async (data, context) => {
+    if (typeof data.itemId === "undefined" || typeof context.auth.uid === "undefined") {
         res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
     }
     else {
         // Read user profile from firestore
-        const readResult = await admin.firestore().collection('Users').doc(req.body.uid).get();
+        const readResult = await admin.firestore().collection('Users').doc(context.auth.uid).get();
         const userProfile = readResult.data();
         if (typeof userProfile === "undefined") {
             // Else no user found
-            res.json({
-                result: `Unknown user: $${req.body.uid}`,
-            });
+            return {
+                result: `Unknown user: $${context.auth.uid}`,
+            };
         }
         else {
             // Confirm user has funds to post item and amount is greater than minimum bid
-            const itemData = await admin.firestore().collection('Items').doc(req.body.itemId).get();
-            if (itemData.data().owner === req.body.uid) {
+            const itemData = await admin.firestore().collection('Items').doc(data.itemId).get();
+            if (itemData.data().owner === context.auth.uid) {
 
-                const result = await admin.firestore().collection('Items').doc(req.body.itemId).delete();
+                const result = await admin.firestore().collection('Items').doc(data.itemId).delete();
                 // Send back a message that we've succesfully deleted the item
-                res.json({
+                return {
                     result: `Item Deleted`,
-                });
+                };
 
             }
             else {
                 // Else user does not have $1 to post the item
-                res.json({
+                return {
                     result: `User does not have permission to delete this item`,
-                });
+                };
             }
         }
     }
+})
+
+exports.getHistory = functions.https.onCall(async (data, context) => {
+  if (typeof context.auth.uid === "undefined") {
+    return {
+      result:"Bad request Check parameters or Body",
+    };
+  }
+  else {
+    // Get user profile information
+    const readResult = await admin.firestore().collection('TransactionHistory').doc(context.auth.uid).get();
+    const userHistory = readResult.data();
+    if (typeof userHistory === "undefined") {
+      //Else user not found
+      return {
+        result: `Unknown user: $${context.auth.uid}`,
+      };
+    }
+    else {
+      // Send user profile information
+      return {
+        result: {
+          "history": userHistory.history,
+        },
+      };
+    }
+  }
 })
 
 exports.updateWinningBid = functions.firestore
