@@ -26,7 +26,11 @@
         android:id="@+id/postItemFragment"
         android:name="com.group1.bidding_system.PostItemFragment"
         android:label="@string/post_item_button_text"
-        tools:layout="@layout/fragment_post_item" />
+        tools:layout="@layout/fragment_post_item" >
+        <action
+            android:id="@+id/action_postItemFragment_to_currentBidsFragment"
+            app:destination="@id/currentBidsFragment" />
+    </fragment>
     <fragment
         android:id="@+id/bidItemFragment"
         android:name="com.group1.bidding_system.BidItemFragment"

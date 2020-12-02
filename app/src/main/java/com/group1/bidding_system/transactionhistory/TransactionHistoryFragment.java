@@ -3,6 +3,7 @@ package com.group1.bidding_system.transactionhistory;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -17,7 +18,11 @@ import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.functions.HttpsCallableResult;
 import com.group1.bidding_system.R;
@@ -77,12 +82,20 @@ public class TransactionHistoryFragment extends Fragment {
 
         transactionRecyclerView = view.findViewById(R.id.transactionHistory_list);
 
+        updateTransactionHistory();
+
+        getPreviousTransactions();
+
+        return view;
+    }
+
+    public void getPreviousTransactions(){
         getHistoryOnCall().addOnCompleteListener(new OnCompleteListener<String>() {
             @Override
             public void onComplete(@NonNull Task<String> task) {
                 if(task.isSuccessful()){
                     Log.d("Response", task.getResult());
-
+                    transactions.clear();
                     try {
                         JSONObject root = new JSONObject(task.getResult());
                         JSONObject history = root.getJSONObject("result");
@@ -105,25 +118,23 @@ public class TransactionHistoryFragment extends Fragment {
                             transaction.date = new Timestamp(seconds, nanoseconds);
 
                             transactions.add(transaction);
+
+                            setTransactionRecyclerView();
+
+                            Toast.makeText(getActivity(), "Retrieved transaction history", Toast.LENGTH_SHORT).show();
                         }
 
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
 
-                    setTransactionRecyclerView();
 
-                    Toast.makeText(getContext(), "Retrieved transaction history",
-                            Toast.LENGTH_SHORT).show();
                 }
                 else{
-                    Toast.makeText(getContext(), "Failed to retrieve transaction history",
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "Failed to retrieve transaction history", Toast.LENGTH_SHORT).show();
                 }
             }
         });
-
-        return view;
     }
 
     public Task<String> getHistoryOnCall(){
@@ -148,9 +159,20 @@ public class TransactionHistoryFragment extends Fragment {
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         transactionRecyclerView.setLayoutManager(layoutManager);
 
-        final TransactionHistoryAdapter ad = new TransactionHistoryAdapter(getContext(),
+        final TransactionHistoryAdapter ad = new TransactionHistoryAdapter(getActivity(),
                 android.R.layout.simple_list_item_1, transactions, db);
+
 
         transactionRecyclerView.setAdapter(ad);
     }
+
+    public void updateTransactionHistory(){
+        db.collection("TransactionHistory").document(uid).addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot value, @Nullable FirebaseFirestoreException error) {
+                getPreviousTransactions();
+            }
+        });
+    }
+
 }

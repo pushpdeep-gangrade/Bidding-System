@@ -262,9 +262,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             finish();
         }
-
-
-
+        
         return super.onOptionsItemSelected(item);
     }
 

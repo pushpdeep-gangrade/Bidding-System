@@ -54,6 +54,7 @@ public class BidItemFragment extends Fragment {
     FirebaseFirestore db;
     private FirebaseFunctions mFunctions;
     private NavController navController;
+    String acceptCancel = "";
 
 
     public BidItemFragment() {
@@ -114,11 +115,11 @@ public class BidItemFragment extends Fragment {
 
                             setItem();
 
-                            Toast.makeText(getContext(), "Bid on item successful",
+                            Toast.makeText(getActivity(), "Bid on item successful",
                                     Toast.LENGTH_SHORT).show();
                         }
                         else{
-                            Toast.makeText(getContext(), "Failed to bid on item",
+                            Toast.makeText(getActivity(), "Failed to bid on item",
                                     Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -129,18 +130,19 @@ public class BidItemFragment extends Fragment {
         acceptBid.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //acceptBidOnRequest();
+                acceptCancel = "Accept";
+
                 acceptBidOnCall().addOnCompleteListener(new OnCompleteListener<String>() {
                     @Override
                     public void onComplete(@NonNull Task<String> task) {
                         if(task.isSuccessful()){
                             Log.d("Response", task.getResult());
 
-                            Toast.makeText(getContext(), "Bid accepted",
+                            Toast.makeText(getActivity(), "Bid accepted",
                                     Toast.LENGTH_SHORT).show();
                         }
                         else{
-                            Toast.makeText(getContext(), "Failed to accept bid",
+                            Toast.makeText(getActivity(), "Failed to accept bid",
                                     Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -151,16 +153,18 @@ public class BidItemFragment extends Fragment {
         cancelBid.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                acceptCancel = "Cancel";
+
                 cancelBidOnCall().addOnCompleteListener(new OnCompleteListener<String>() {
                     @Override
                     public void onComplete(@NonNull Task<String> task) {
                         if(task.isSuccessful()){
                             Log.d("Response", task.getResult());
 
-                            Toast.makeText(getContext(), "Bid has been canceled", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getActivity(), "Bid has been canceled", Toast.LENGTH_LONG).show();
                         }
                         else{
-                            Toast.makeText(getContext(), "Failed to cancel bid", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getActivity(), "Failed to cancel bid", Toast.LENGTH_LONG).show();
                         }
                     }
                 });;
@@ -271,7 +275,7 @@ public class BidItemFragment extends Fragment {
                                     if(task.isSuccessful()){
                                         Log.d("Response", task.getResult());
 
-                                        Toast.makeText(getContext(), "Item has been canceled", Toast.LENGTH_LONG).show();
+                                        Toast.makeText(getActivity(), "Item has been canceled", Toast.LENGTH_LONG).show();
                                     }
                                     else{
                                         Toast.makeText(getContext(), "Failed to cancel item", Toast.LENGTH_LONG).show();
@@ -287,6 +291,7 @@ public class BidItemFragment extends Fragment {
                     makeBidLayout.setVisibility(View.VISIBLE);
                 }
                 titleText.setText(bidItem.item.itemName + " Bid");
+
                 setWinnerName(bidItem.winningBid.bidderId, bidItem);
             }
         });
@@ -305,6 +310,9 @@ public class BidItemFragment extends Fragment {
 
                     showCancelDialog();
                 }
+                else{
+                    setItem();
+                }
             }
         });
     }
@@ -312,8 +320,14 @@ public class BidItemFragment extends Fragment {
     public void showCancelDialog(){
         final AlertDialog.Builder alertDialog = new AlertDialog.Builder(getContext());
 
-        alertDialog.setTitle("Item canceled");
-        alertDialog.setMessage("Item bid has been canceled");
+        if(acceptCancel.equals("Accept")){
+            alertDialog.setTitle("Bid Accepted");
+            alertDialog.setMessage("A bid has been accepted");
+        }
+        else{
+            alertDialog.setTitle("Item Canceled");
+            alertDialog.setMessage("Item bid has been canceled");
+        }
 
         alertDialog.setNeutralButton("Ok", new DialogInterface.OnClickListener() {
             @Override
@@ -332,7 +346,15 @@ public class BidItemFragment extends Fragment {
             @Override
             public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                 User user = new User(task.getResult().getData());
-                currentWinnerText.setText(user.firstName + " " + user.lastName + ": $" + bidItem.winningBid.amount);
+
+                Locale locale  = new Locale("en", "UK");
+                String pattern = "###.00";
+
+                DecimalFormat decimalFormat = (DecimalFormat)
+                        NumberFormat.getNumberInstance(locale);
+                decimalFormat.applyPattern(pattern);
+
+                currentWinnerText.setText(user.firstName + " " + user.lastName + ": $" + decimalFormat.format(bidItem.winningBid.amount));
             }
         });
     }

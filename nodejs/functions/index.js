@@ -474,18 +474,15 @@ exports.getHistory = functions.https.onCall(async (data, context) => {
 exports.updateWinningBid = functions.firestore
     .document('Items/{itemId}')
     .onUpdate((change, context) => {
-        
-        // Get an object representing the document
-        // e.g. {'name': 'Marie', 'age': 66}
+  
         const newBidWinner = change.after.data().winningBid.userId;
-        // ...or the previous value before this update
+   
         const previousBidWinner = change.before.data().winningBid.userId;
-        console.log(change.before.data());
  
         //check if bid added or cenceld by user
         if (change.before.data().previousbids.length > change.after.data().previousbids.length) {
             //send notification to both the user
-            var prevmessage = {
+      /*      var prevmessage = {
                 notification: {
                     title: 'Winning Bid',
                     body: 'Your bid is no more the highest',
@@ -499,7 +496,7 @@ exports.updateWinningBid = functions.firestore
                 })
                 .catch((error) => {
                     console.log('Error sending message:', error);
-                });
+                });*/
 
 
             // notification to new Bid Winner
@@ -545,7 +542,7 @@ exports.updateWinningBid = functions.firestore
                //send notification to both the user
             //decrement balanceonhold of new user and increment the balnceonhold of previous user
 
-           const prevmessage1 = {
+        /*   const prevmessage1 = {
                 notification: {
                     title: 'Winning Bid',
                     body: 'Congrats! Your bid is the highest',
@@ -559,7 +556,7 @@ exports.updateWinningBid = functions.firestore
                 })
                 .catch((error) => {
                     console.log('Error sending message:', error);
-                });
+                });*/
 
 
             // notification to new Bid Winner
@@ -604,8 +601,6 @@ exports.updateWinningBid = functions.firestore
             console.log("previous value" + previousBidWinner);
 
         console.log("new value" + newBidWinner);
-
-
         return null
     });
 
