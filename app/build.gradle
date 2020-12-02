@@ -50,7 +50,9 @@ dependencies {
     implementation 'com.google.firebase:firebase-functions:19.1.0'
     implementation 'com.loopj.android:android-async-http:1.4.9'
 
-
+    implementation platform('com.google.firebase:firebase-bom:26.1.0')
+    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.firebase:firebase-analytics'
 
 }
 apply plugin: 'com.google.gms.google-services'

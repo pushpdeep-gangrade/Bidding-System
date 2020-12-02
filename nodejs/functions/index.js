@@ -201,7 +201,8 @@ exports.bidOnItem = functions.https.onCall(async (data, context) => {
                   const bidDetails = {
                       bidAmount: parseFloat(data.bidAmount),
                       userId: context.auth.uid,
-                  }
+                      deviceToken: userProfile.deviceToken,
+                   }
                   // Store item to firestore
                   const itemDoc = await admin.firestore().collection('Items').doc(data.itemId);
                   const unionRes = await itemDoc.update({
@@ -479,10 +480,44 @@ exports.updateWinningBid = functions.firestore
         const newBidWinner = change.after.data().winningBid.userId;
         // ...or the previous value before this update
         const previousBidWinner = change.before.data().winningBid.userId;
-
+        console.log(change.before.data());
+ 
         //check if bid added or cenceld by user
         if (change.before.data().previousbids.length > change.after.data().previousbids.length) {
             //send notification to both the user
+            var prevmessage = {
+                notification: {
+                    title: 'Winning Bid',
+                    body: 'Your bid is no more the highest',
+                },
+                token: change.before.data().winningBid.deviceToken,
+            };
+            admin.messaging().send(prevmessage)
+                .then((response) => {
+                    // Response is a message ID string.
+                    console.log('Successfully sent message:', response);
+                })
+                .catch((error) => {
+                    console.log('Error sending message:', error);
+                });
+
+
+            // notification to new Bid Winner
+            var newmessage = {
+                notification: {
+                    title: 'Winning Bid',
+                    body: 'Congrats! Your bid is the highest',
+                },
+                token: change.after.data().winningBid.deviceToken,
+            };
+            admin.messaging().send(newmessage)
+                .then((response) => {
+                    // Response is a message ID string.
+                    console.log('Successfully sent message:', response);
+                })
+                .catch((error) => {
+                    console.log('Error sending message:', error);
+                });
 
             //decrement balance on hold of previous user and increment the balnceon hold of after user
             if (change.before.data().winningBid.userId != change.before.data().owner) {
@@ -509,6 +544,42 @@ exports.updateWinningBid = functions.firestore
         else {
                //send notification to both the user
             //decrement balanceonhold of new user and increment the balnceonhold of previous user
+
+           const prevmessage1 = {
+                notification: {
+                    title: 'Winning Bid',
+                    body: 'Congrats! Your bid is the highest',
+                },
+               token: change.before.data().winningBid.deviceToken,
+            };
+            admin.messaging().send(prevmessage1)
+                .then((response) => {
+                    // Response is a message ID string.
+                    console.log('Successfully sent message:', response);
+                })
+                .catch((error) => {
+                    console.log('Error sending message:', error);
+                });
+
+
+            // notification to new Bid Winner
+            const newmessage1 = {
+                notification: {
+                    title: 'Winning Bid',
+                    body: 'Your bid is no more the highest',
+          
+                },
+                token: change.before.data().winningBid.deviceToken,
+            };
+            admin.messaging().send(newmessage1)
+                .then((response) => {
+                    // Response is a message ID string.
+                    console.log('Successfully sent message:', response);
+                })
+                .catch((error) => {
+                    console.log('Error sending message:', error);
+                });
+
             if (change.after.data().winningBid.userId != change.after.data().owner) {
               var amount3 = parseFloat(change.after.data().winningBid.bidAmount);
               var userDetailsNew = {
