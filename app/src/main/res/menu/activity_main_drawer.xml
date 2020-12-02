@@ -13,6 +13,9 @@
             android:id="@+id/nav_post_item"
             android:title="@string/post_item_button_text" />
         <item
+            android:id="@+id/nav_transaction_history"
+            android:title="@string/transaction_history_title_text" />
+        <item
             android:id="@+id/nav_logout"
             android:title="@string/logout" />
     </group>

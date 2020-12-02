@@ -382,7 +382,7 @@ exports.acceptBid = functions.https.onCall(async (data, context) => {
                         sellerId: context.auth.uid,
                         item: itemName,
                         price: amount,
-                        date: date_ob.getDate(),
+                        date: date_ob,
                       }),
                   }
 

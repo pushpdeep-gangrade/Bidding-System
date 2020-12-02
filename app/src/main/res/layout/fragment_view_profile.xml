@@ -36,6 +36,7 @@
         android:id="@+id/linearLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
         android:layout_marginTop="32dp"
         android:orientation="horizontal"
         android:padding="8dp"
@@ -61,13 +62,15 @@
             android:ems="10"
             android:hint="@string/first_name_hint"
             android:singleLine="false"
-            android:textColor="#000000" />
+            android:textColor="#000000"
+            android:textSize="18sp" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/linearLayout2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
         android:layout_marginTop="16dp"
         android:orientation="horizontal"
         android:padding="8dp"
@@ -92,13 +95,15 @@
             android:background="@android:color/transparent"
             android:ems="10"
             android:hint="@string/last_name_hint"
-            android:textColor="#000000" />
+            android:textColor="#000000"
+            android:textSize="18sp" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/linearLayout3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
         android:layout_marginTop="16dp"
         android:orientation="horizontal"
         android:padding="8dp"
@@ -116,7 +121,7 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <EditText
+        <TextView
             android:id="@+id/viewProfile_emailText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -124,14 +129,15 @@
             android:background="@android:color/transparent"
             android:ems="10"
             android:hint="@string/email_hint"
-            android:inputType="textEmailAddress"
-            android:textColor="#000000" />
+            android:textColor="#000000"
+            android:textSize="18sp" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/linearLayout4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
         android:layout_marginTop="16dp"
         android:orientation="horizontal"
         android:padding="8dp"

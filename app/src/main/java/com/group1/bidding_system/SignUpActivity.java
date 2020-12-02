@@ -120,32 +120,24 @@ public class SignUpActivity extends AppCompatActivity {
                                         Toast.makeText(SignUpActivity.this, "Sign up was successful.",
                                                 Toast.LENGTH_SHORT).show();
 
-                                        User newUser = new User(uid, firstNameInput, lastNameInput, emailInput, 0.0);
+                                        User newUser = new User(uid, firstNameInput, lastNameInput, emailInput, 200.00);
 
-                                       /* Map<String, Object> userMap = new HashMap<>();
 
-                                        userMap.put("userId", newUser.userId);
-                                        userMap.put("firstName", newUser.firstName);
-                                        userMap.put("lastName", newUser.lastName);
-                                        userMap.put("email", newUser.email);
-                                        userMap.put("balance", newUser.balance);
+                                        createUserOnCall(newUser).addOnCompleteListener(new OnCompleteListener<String>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<String> task) {
+                                                if(task.isSuccessful()){
+                                                    Log.d("Response", task.getResult());
 
-                                        db.collection("Users").document(newUser.userId)
-                                                .set(userMap)
-                                                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                                    @Override
-                                                    public void onSuccess(Void aVoid) {
-                                                        Log.d("Save User to FS", "Successfully added user to Firestore");
-                                                    }
-                                                })
-                                                .addOnFailureListener(new OnFailureListener() {
-                                                    @Override
-                                                    public void onFailure(@NonNull Exception e) {
-
-                                                    }
-                                        });*/
-
-                                        createUserOnRequest(newUser);
+                                                    Toast.makeText(SignUpActivity.this, "Sign up was successful.",
+                                                            Toast.LENGTH_SHORT).show();
+                                                }
+                                                else{
+                                                    Toast.makeText(SignUpActivity.this, "Sign up failed.",
+                                                            Toast.LENGTH_SHORT).show();
+                                                }
+                                            }
+                                        });
 
 
 
@@ -166,9 +158,35 @@ public class SignUpActivity extends AppCompatActivity {
     }
 
     /*
-      This function requests the deployed Firebase Cloud function, createUser
-      On Request (functions.https.onRequest) calls the Cloud function using the generated URL for the Cloud function
+      This function calls the deployed Firebase Cloud function, createUser
+      On Call (functions.https.onCall) calls the Cloud function without the URL
     */
+    private Task<String> createUserOnCall(User user) {
+        Map<String, String> data = new HashMap<>();
+
+        data.put("firstname", user.firstName);
+        data.put("lastname", user.lastName);
+        data.put("email", user.email);
+        data.put("uid", user.userId);
+        data.put("balance", String.valueOf(user.balance));
+
+        return mFunctions
+                .getHttpsCallable("createUser")
+                .call(data)
+                .continueWith(new Continuation<HttpsCallableResult, String>() {
+                    @Override
+                    public String then(@NonNull Task<HttpsCallableResult> task) throws Exception {
+                        Object result = task.getResult().getData();
+                        Log.d("Result", result.toString());
+                        return task.getResult().getData().toString();
+                    }
+                });
+    }
+
+   /* *//*
+     This function requests the deployed Firebase Cloud function, createUser
+     On Request (functions.https.onRequest) calls the Cloud function using the generated URL for the Cloud function
+   *//*
     private void createUserOnRequest(final User user){
         String createUserUrl = "https://us-central1-auction-a09bd.cloudfunctions.net/createUser";
 
@@ -179,7 +197,6 @@ public class SignUpActivity extends AppCompatActivity {
         params.put("lastname", user.lastName);
         params.put("email", user.email);
         params.put("uid", user.userId);
-        //params.put("password", password);
         params.put("balance", String.valueOf(user.balance));
 
         client.post(createUserUrl, params,
@@ -217,31 +234,5 @@ public class SignUpActivity extends AppCompatActivity {
                     }
                 }
         );
-    }
-
-    /*
-      This function calls the deployed Firebase Cloud function, createUser
-      On Call (functions.https.onCall) calls the Cloud function without the URL
-    */
-    private Task<String> createUserOnCall(User user) {
-        Map<String, String> data = new HashMap<>();
-
-        data.put("firstname", user.firstName);
-        data.put("lastname", user.lastName);
-        data.put("email", user.email);
-        data.put("balance", String.valueOf(user.balance));
-        //data.put("password", password);
-
-        return mFunctions
-                .getHttpsCallable("createUser")
-                .call(data)
-                .continueWith(new Continuation<HttpsCallableResult, String>() {
-                    @Override
-                    public String then(@NonNull Task<HttpsCallableResult> task) throws Exception {
-                        String result = (String) task.getResult().getData();
-                        Log.d("Result", result);
-                        return (String) task.getResult().getData();
-                    }
-                });
-    }
+    }*/
 }

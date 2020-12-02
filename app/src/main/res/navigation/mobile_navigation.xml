@@ -31,5 +31,14 @@
         android:id="@+id/bidItemFragment"
         android:name="com.group1.bidding_system.BidItemFragment"
         android:label="@string/post_item_button_text"
-        tools:layout="@layout/fragment_bid_item" />
+        tools:layout="@layout/fragment_bid_item" >
+        <action
+            android:id="@+id/action_bidItemFragment_to_currentBidsFragment"
+            app:destination="@id/currentBidsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/transactionHistoryFragment"
+        android:name="com.group1.bidding_system.transactionhistory.TransactionHistoryFragment"
+        android:label="@string/transaction_history_title_text"
+        tools:layout="@layout/fragment_transaction_history" />
 </navigation>

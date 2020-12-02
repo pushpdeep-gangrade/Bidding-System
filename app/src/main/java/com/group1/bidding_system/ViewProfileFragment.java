@@ -14,10 +14,14 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.functions.FirebaseFunctions;
+import com.google.firebase.functions.HttpsCallableResult;
 import com.group1.bidding_system.models.User;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
@@ -29,7 +33,9 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -37,10 +43,9 @@ import cz.msebera.android.httpclient.Header;
 public class ViewProfileFragment extends Fragment {
     //private FirebaseFirestore db;
     String uid = "";
-    TextView first;
-    TextView last;
-    TextView email;
-    TextView balance;
+    TextView first, last, email, balance;
+    private FirebaseFunctions mFunctions;
+
 
 
     public ViewProfileFragment() {
@@ -68,32 +73,57 @@ public class ViewProfileFragment extends Fragment {
         // Inflate the layout for this fragment
         final View view = inflater.inflate(R.layout.fragment_view_profile, container, false);
 
-        /*db = FirebaseFirestore.getInstance();
-
-        db.collection("Users").document(uid).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                User user = new User(task.getResult().getData());
-                Log.d("User", user.email);
-
-                TextView first = (TextView) view.findViewById(R.id.viewProfile_firstNameText);
-                TextView last = view.findViewById(R.id.viewProfile_lastNameText);
-                TextView email = view.findViewById(R.id.viewProfile_emailText);
-                TextView balance = view.findViewById(R.id.viewProfile_currentBalance);
-
-                first.setText(user.firstName);
-                last.setText(user.lastName);
-                email.setText(user.email);
-                balance.setText("$" + String.valueOf(user.balance));
-            }
-        });*/
 
         first = (TextView) view.findViewById(R.id.viewProfile_firstNameText);
         last = view.findViewById(R.id.viewProfile_lastNameText);
         email = view.findViewById(R.id.viewProfile_emailText);
         balance = view.findViewById(R.id.viewProfile_currentBalance);
 
-        getProfileOnRequest();
+        mFunctions = FirebaseFunctions.getInstance();
+
+        getProfileOnCall().addOnCompleteListener(new OnCompleteListener<String>() {
+            @Override
+            public void onComplete(@NonNull Task<String> task) {
+                if(task.isSuccessful()){
+                    try {
+                        JSONObject root = new JSONObject(task.getResult());
+                        JSONObject userObject = root.getJSONObject("result");
+
+                        User user = new User();
+
+                        user.firstName = userObject.getString("fname");
+                        user.lastName = userObject.getString("lname");
+                        user.email = userObject.getString("email");
+                        user.balance = userObject.getDouble("balance");
+
+
+                        first.setText(user.firstName);
+                        last.setText(user.lastName);
+                        email.setText(user.email);
+
+                        Locale locale  = new Locale("en", "UK");
+                        String pattern = "###.00";
+
+                        DecimalFormat decimalFormat = (DecimalFormat)
+                                NumberFormat.getNumberInstance(locale);
+                        decimalFormat.applyPattern(pattern);
+
+                        balance.setText("$" + decimalFormat.format(user.balance));
+
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    Toast.makeText(getContext(), "Profile retrieved",
+                            Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(getContext(), "Failed to retrieve profile",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+        });;
 
         Button addMoney = view.findViewById(R.id.viewProfile_addMoneyButton);
         final EditText moneyAmount = view.findViewById(R.id.viewProfile_addMoneyEdit);
@@ -103,7 +133,57 @@ public class ViewProfileFragment extends Fragment {
             public void onClick(View view) {
                 String amount = moneyAmount.getText().toString();
 
-                addBalanceOnRequest(amount, view);
+                addBalanceOnCall(amount).addOnCompleteListener(new OnCompleteListener<String>() {
+                    @Override
+                    public void onComplete(@NonNull Task<String> task) {
+                        if(task.isSuccessful()){
+                            Log.d("Response", task.getResult());
+
+                            getProfileOnCall().addOnCompleteListener(new OnCompleteListener<String>() {
+                                @Override
+                                public void onComplete(@NonNull Task<String> task) {
+                                    if(task.isSuccessful()){
+                                        try {
+                                            JSONObject root = new JSONObject(task.getResult());
+                                            JSONObject userObject = root.getJSONObject("result");
+
+                                            User user = new User();
+
+                                            user.balance = userObject.getDouble("balance");
+
+                                            Locale locale  = new Locale("en", "UK");
+                                            String pattern = "###.00";
+
+                                            DecimalFormat decimalFormat = (DecimalFormat)
+                                                    NumberFormat.getNumberInstance(locale);
+                                            decimalFormat.applyPattern(pattern);
+
+                                            balance.setText("$" + decimalFormat.format(user.balance));
+
+
+                                        } catch (JSONException e) {
+                                            e.printStackTrace();
+                                        }
+
+                                        Toast.makeText(getContext(), "Profile retrieved",
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                    else{
+                                        Toast.makeText(getContext(), "Failed to retrieve profile",
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            });;
+
+                            Toast.makeText(getContext(), "Money added successfully",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                        else{
+                            Toast.makeText(getContext(), "Failed to add money",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });;
             }
         });
 
@@ -111,7 +191,44 @@ public class ViewProfileFragment extends Fragment {
         return view;
     }
 
-    public void getProfileOnRequest(){
+    public Task<String> getProfileOnCall(){
+        Map<String, String> data = new HashMap<>();
+
+        data.put("uid", uid);
+
+        return mFunctions
+                .getHttpsCallable("getProfile")
+                .call(data)
+                .continueWith(new Continuation<HttpsCallableResult, String>() {
+                    @Override
+                    public String then(@NonNull Task<HttpsCallableResult> task) throws Exception {
+                        Object result = task.getResult().getData();
+                        Log.d("Result", result.toString());
+                        return task.getResult().getData().toString();
+                    }
+                });
+    }
+
+    public Task<String> addBalanceOnCall(String amount){
+        Map<String, String> data = new HashMap<>();
+
+        data.put("uid", uid);
+        data.put("balance", amount);
+
+        return mFunctions
+                .getHttpsCallable("addBalance")
+                .call(data)
+                .continueWith(new Continuation<HttpsCallableResult, String>() {
+                    @Override
+                    public String then(@NonNull Task<HttpsCallableResult> task) throws Exception {
+                        String result = task.getResult().getData().toString();
+                        Log.d("Result", result.toString());
+                        return task.getResult().getData().toString();
+                    }
+                });
+    }
+
+   /* public void getProfileOnRequest(){
         String getProfileUrl = "https://us-central1-auction-a09bd.cloudfunctions.net/getProfile";
 
         AsyncHttpClient client = new AsyncHttpClient();
@@ -228,5 +345,5 @@ public class ViewProfileFragment extends Fragment {
                     }
                 }
         );
-    }
+    }*/
 }

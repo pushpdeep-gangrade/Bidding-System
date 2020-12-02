@@ -31,4 +31,9 @@
     <string name="make_bid_button_text">Make Bid</string>
     <string name="cancel_bid_button_text">Cancel Bid</string>
     <string name="accept_bid_button_text">Accept Bid</string>
+    <string name="price_label_text">Price</string>
+    <string name="seller_label_text">Seller</string>
+    <string name="date_label_text">Date</string>
+    <string name="transaction_history_title_text">Transaction History</string>
+    <string name="item_label_text">Item</string>
 </resources>
