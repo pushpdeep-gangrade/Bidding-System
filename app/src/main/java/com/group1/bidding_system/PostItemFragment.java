@@ -4,6 +4,8 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -43,6 +45,7 @@ public class PostItemFragment extends Fragment {
     EditText itemName, startingBid, minFinalBid;
     Button postItem;
     private FirebaseFunctions mFunctions;
+    private NavController navController;
 
 
     public PostItemFragment() {
@@ -77,6 +80,10 @@ public class PostItemFragment extends Fragment {
 
         mFunctions = FirebaseFunctions.getInstance();
 
+        NavHostFragment navHostFragment = (NavHostFragment) getActivity().getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment);
+        navController = navHostFragment.getNavController();
+
+
         postItem.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -85,10 +92,15 @@ public class PostItemFragment extends Fragment {
                     public void onComplete(@NonNull Task<String> task) {
                         if(task.isSuccessful()){
                             Log.d("Response", task.getResult());
-                            Toast.makeText(getContext(), "Item posted successfully", Toast.LENGTH_LONG).show();
+
+                            Bundle bundle = new Bundle();
+                            bundle.putString("userId", uid);
+                            navController.navigate(R.id.action_postItemFragment_to_currentBidsFragment, bundle);
+
+                            Toast.makeText(getActivity(), "Item posted successfully", Toast.LENGTH_LONG).show();
                         }
                         else{
-                            Toast.makeText(getContext(), "Failed to post item", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getActivity(), "Failed to post item", Toast.LENGTH_LONG).show();
                         }
                     }
                 });
