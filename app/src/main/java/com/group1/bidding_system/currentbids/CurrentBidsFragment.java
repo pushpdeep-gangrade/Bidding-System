@@ -3,6 +3,7 @@ package com.group1.bidding_system.currentbids;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
@@ -16,7 +17,10 @@ import android.view.ViewGroup;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.group1.bidding_system.R;
@@ -64,17 +68,20 @@ public class CurrentBidsFragment extends Fragment {
 
         bidRecyclerView = view.findViewById(R.id.currentBids_list);
 
+        updateCurrentBids();
+
         getBids();
 
         return view;
     }
 
     public void getBids(){
-        bidItemArrayList.clear();
         db.collection("Items").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
             public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 if (task.isSuccessful()) {
+                    bidItemArrayList.clear();
+
                     for (QueryDocumentSnapshot document : task.getResult()) {
                         BidItem bid = new BidItem(document.getData());
                         Log.d("Bid", bid.toString());
@@ -95,6 +102,15 @@ public class CurrentBidsFragment extends Fragment {
                 android.R.layout.simple_list_item_1, bidItemArrayList, db, uid, navController);
 
         bidRecyclerView.setAdapter(ad);
+    }
+
+    public void updateCurrentBids(){
+        db.collection("Items").addSnapshotListener(new EventListener<QuerySnapshot>() {
+            @Override
+            public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
+                getBids();
+            }
+        });
     }
 
 

@@ -1,8 +1,11 @@
 package com.group1.bidding_system;
 
+import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import android.util.Log;
@@ -19,7 +22,10 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.functions.HttpsCallableResult;
 import com.group1.bidding_system.models.User;
@@ -41,10 +47,11 @@ import cz.msebera.android.httpclient.Header;
 
 
 public class ViewProfileFragment extends Fragment {
-    //private FirebaseFirestore db;
+    private FirebaseFirestore db;
     String uid = "";
     TextView first, last, email, balance;
     private FirebaseFunctions mFunctions;
+    Context context = getContext();
 
 
 
@@ -80,50 +87,11 @@ public class ViewProfileFragment extends Fragment {
         balance = view.findViewById(R.id.viewProfile_currentBalance);
 
         mFunctions = FirebaseFunctions.getInstance();
+        db = FirebaseFirestore.getInstance();
 
-        getProfileOnCall().addOnCompleteListener(new OnCompleteListener<String>() {
-            @Override
-            public void onComplete(@NonNull Task<String> task) {
-                if(task.isSuccessful()){
-                    try {
-                        JSONObject root = new JSONObject(task.getResult());
-                        JSONObject userObject = root.getJSONObject("result");
+        updateProfile();
 
-                        User user = new User();
-
-                        user.firstName = userObject.getString("fname");
-                        user.lastName = userObject.getString("lname");
-                        user.email = userObject.getString("email");
-                        user.balance = userObject.getDouble("balance");
-
-
-                        first.setText(user.firstName);
-                        last.setText(user.lastName);
-                        email.setText(user.email);
-
-                        Locale locale  = new Locale("en", "UK");
-                        String pattern = "###.00";
-
-                        DecimalFormat decimalFormat = (DecimalFormat)
-                                NumberFormat.getNumberInstance(locale);
-                        decimalFormat.applyPattern(pattern);
-
-                        balance.setText("$" + decimalFormat.format(user.balance));
-
-
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-
-                    Toast.makeText(getContext(), "Profile retrieved",
-                            Toast.LENGTH_SHORT).show();
-                }
-                else{
-                    Toast.makeText(getContext(), "Failed to retrieve profile",
-                            Toast.LENGTH_SHORT).show();
-                }
-            }
-        });;
+        setProfile();
 
         Button addMoney = view.findViewById(R.id.viewProfile_addMoneyButton);
         final EditText moneyAmount = view.findViewById(R.id.viewProfile_addMoneyEdit);
@@ -165,22 +133,18 @@ public class ViewProfileFragment extends Fragment {
                                             e.printStackTrace();
                                         }
 
-                                        Toast.makeText(getContext(), "Profile retrieved",
-                                                Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getActivity(), "Profile retrieved", Toast.LENGTH_SHORT).show();
                                     }
                                     else{
-                                        Toast.makeText(getContext(), "Failed to retrieve profile",
-                                                Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getActivity(), "Failed to retrieve profile", Toast.LENGTH_SHORT).show();
                                     }
                                 }
                             });;
 
-                            Toast.makeText(getContext(), "Money added successfully",
-                                    Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getActivity(), "Money added successfully", Toast.LENGTH_SHORT).show();
                         }
                         else{
-                            Toast.makeText(getContext(), "Failed to add money",
-                                    Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getActivity(), "Failed to add money", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });;
@@ -189,6 +153,54 @@ public class ViewProfileFragment extends Fragment {
 
 
         return view;
+    }
+
+    public void setProfile(){
+        getProfileOnCall().addOnCompleteListener(new OnCompleteListener<String>() {
+            @Override
+            public void onComplete(@NonNull Task<String> task) {
+                if(task.isSuccessful()){
+                    try {
+                        JSONObject root = new JSONObject(task.getResult());
+                        JSONObject userObject = root.getJSONObject("result");
+
+                        User user = new User();
+
+                        user.firstName = userObject.getString("fname");
+                        user.lastName = userObject.getString("lname");
+                        user.email = userObject.getString("email");
+                        user.balance = userObject.getDouble("balance");
+
+
+                        first.setText(user.firstName);
+                        last.setText(user.lastName);
+                        email.setText(user.email);
+
+                        Locale locale  = new Locale("en", "UK");
+                        String pattern = "###.00";
+
+                        DecimalFormat decimalFormat = (DecimalFormat)
+                                NumberFormat.getNumberInstance(locale);
+                        decimalFormat.applyPattern(pattern);
+
+                        balance.setText("$" + decimalFormat.format(user.balance));
+
+                        Toast.makeText(getActivity(), "Profile retrieved",
+                                Toast.LENGTH_SHORT).show();
+
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+
+                }
+                else{
+                    Toast.makeText(getActivity(), "Failed to retrieve profile",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+        });;
     }
 
     public Task<String> getProfileOnCall(){
@@ -226,6 +238,15 @@ public class ViewProfileFragment extends Fragment {
                         return task.getResult().getData().toString();
                     }
                 });
+    }
+
+    public void updateProfile(){
+        db.collection("Users").document(uid).addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@Nullable DocumentSnapshot value, @Nullable FirebaseFirestoreException error) {
+                setProfile();
+            }
+        });
     }
 
    /* public void getProfileOnRequest(){
