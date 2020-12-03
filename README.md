@@ -3,19 +3,12 @@
 - [Authors](#authors)
 - [Video Demo](#demo)
 - [Project Wiki](#wiki)
-- [Postman and API](#postman)
 
 ## Authors <a name="authors"></a>
 - Pushdeep Gangrade
 - Katy Mitchell
 - Valerie Ray
 - Rockford Stoller
-
-## Todo: On the same repo create a wiki page describing your design and implementation. The wiki page should describe the cloud functions, DB Schema and all the assumptions required to provide authentication. In addition describe any data that is stored on the device or on the server.
-         Include the Postman file in the repo.
-         If you used custom APIs you should demo your API using the Postman Chrome Plugin. The API should be demonstrated using Postman, you should create an api component in Postman for each of your created APIs.
-         Demo your API using a mobile app that uses your implemented api.
-         A 5 minute (max) screencast to demo your application.
 
 ## Video Demo <a name="demo"></a>
 # todo: link video
@@ -62,5 +55,3 @@ In this assignment you are going to use Firebase Cloud Functions and Push Notifi
   - `acceptBidOnItem({itemId})` accepts the current highest bid for an item
   - `cancelItem({itemId})` removes a bid for an item
 
-## Postman and API  <a name="postman"></a>
-# todo: add postman files, describe API and data stored on the server
