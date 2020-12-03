@@ -11,7 +11,7 @@
 - Rockford Stoller
 
 ## Video Demo <a name="demo"></a>
-# todo: link video
+https://youtu.be/MDEXidEPpZ0
 
 ## Project Wiki  <a name="wiki"></a>
 In this assignment you are going to use Firebase Cloud Functions and Push Notifications. The mobile app is focused on a realtime bidding application. The following are the user stories:
