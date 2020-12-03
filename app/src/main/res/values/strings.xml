@@ -36,4 +36,5 @@
     <string name="date_label_text">Date</string>
     <string name="transaction_history_title_text">Transaction History</string>
     <string name="item_label_text">Item</string>
+    <string name="current_bid_label_text">Current Bid</string>
 </resources>

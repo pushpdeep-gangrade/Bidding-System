@@ -133,11 +133,13 @@ exports.postItem = functions.https.onCall(async (data, context) => {
           minfinalbid: parseFloat(data.minfinalbid),
           winningBid: {
             bidAmount: parseFloat(data.startbid),
+            deviceToken: userProfile.deviceToken,
             userId: context.auth.uid,
         },
           previousbids: [
             {
               bidAmount: parseFloat(data.startbid),
+              deviceToken: userProfile.deviceToken,
               userId: context.auth.uid,
             },
           ],
@@ -285,11 +287,28 @@ exports.cancelBid = functions.https.onCall(async (data, context) => {
                     };
                   }
                   else{
-                    const filteredItems = itemData.data().previousbids.filter(item => item.userId !== itemData.data().winningBid.userId)
+                    var filteredItems = itemData.data().previousbids.filter(item => item.userId !== itemData.data().winningBid.userId)
                     console.log(filteredItems);
   
-                    const max = Math.max.apply(Math, filteredItems.map(function (o) { return o.bidAmount; }))
-                    const winBid = filteredItems.find(element => element.bidAmount == max);
+
+                    var winBid;
+                    var i;
+                    for (i = 0; i < filteredItems.length; i++) {
+                      var max = Math.max.apply(Math, filteredItems.map(function (o) { return o.bidAmount; }))
+                      winBid = filteredItems.find(element => element.bidAmount == max);
+
+                      var checkUserBalance = await admin.firestore().collection('Users').doc(winBid.userId).get();
+                      if (typeof checkUserBalance.data() === "undefined") {
+                        continue;
+                      }
+
+                      if (checkUserBalance.data().balance < winBid.bidAmount) {
+                        filteredItems = filteredItems.filter(item => item.userId !== winBid.userId)
+                      }
+                      else {
+                        break;
+                      }
+                    }
   
                     const itemDoc = await admin.firestore().collection('Items').doc(data.itemId);
                     const unionRes = await itemDoc.update({
@@ -410,7 +429,9 @@ exports.acceptBid = functions.https.onCall(async (data, context) => {
 // Endpoint for posting a bid on an item
 exports.cancelItem = functions.https.onCall(async (data, context) => {
     if (typeof data.itemId === "undefined" || typeof context.auth.uid === "undefined") {
-        res.status(BAD_REQUEST).send("Bad request Check parameters or Body");
+      return {
+        result:"Bad request Check parameters or Body",
+      };
     }
     else {
         // Read user profile from firestore
@@ -428,6 +449,15 @@ exports.cancelItem = functions.https.onCall(async (data, context) => {
             if (itemData.data().owner === context.auth.uid) {
 
                 const result = await admin.firestore().collection('Items').doc(data.itemId).delete();
+
+                const bidWinner = itemData.winningBid.userId;
+                const amount = parseFloat(itemData.winningBid.bidAmount);
+
+                //update balnceOnHold of winneg bider
+                var userDetailsNew = { balance: admin.firestore.FieldValue.increment(amount) }
+                const docRef = admin.firestore().collection('Users').doc(bidWinner);
+                const balanceWriteResult = docRef.update(userDetailsNew);
+
                 // Send back a message that we've succesfully deleted the item
                 return {
                     result: `Item Deleted`,
