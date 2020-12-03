@@ -50,7 +50,7 @@ In this assignment you are going to use Firebase Cloud Functions and Push Notifi
   callable functions include:
   - `createUserProfile({balance, fname, lname})` creates a user profile from the signup screen
   - `addMoney({amount})` adds money to a user's account.
-  - `postNewItem({item_name, starting_bid, min_final_bid}) posts a new bid item
+  - `postNewItem({item_name, starting_bid, min_final_bid})` posts a new bid item
   - `bidOnItem({itemId, bid})` creates a bid on a posted item
   - `acceptBidOnItem({itemId})` accepts the current highest bid for an item
   - `cancelItem({itemId})` removes a bid for an item
